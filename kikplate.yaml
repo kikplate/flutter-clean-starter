@@ -2,6 +2,7 @@ name: Flutter Clean Architecture Starter
 description: Production proven cross platform flutter boilerplate, based on clean architecture, and MVVM 
 category: frontend
 owner: kikplate-public
+verification_token: 83eccb4c-5a7c-4ffa-8306-a8876c858996
 verification_token: 
 tags:
   - flutter
