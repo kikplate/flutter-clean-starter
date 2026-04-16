@@ -1,23 +1,35 @@
 # Implementation example
 
-Let's implement simple increment button feature where we need:
+Let's implement a simple **increment button** vertical slice. Files are split like the rest of the app:
 
-- View of button
-- WM of button
-- Increment model
-- Usecase
-- Repository (performs HTTP and maps DTOs; no separate datasource type)
+| Concern | Location |
+|--------|----------|
+| Domain + data (entity, use case, `IRepository`, repository, DTOs) | `lib/features/increment/` — `domain/`, `data/` only (no `presentation/`). |
+| `ElementaryModel` that calls the use case | `lib/application/models/increment/` (e.g. `increment_model.dart`). |
+| Reusable button **view** + **`IButtonVm`** contract | `lib/application/widgets/increment_button/` (widget + abstract `IButtonVm`). |
+| Page root + **concrete** `WidgetModel` implementing `IButtonVm` | `lib/application/pages/increment_button/vm/` (e.g. `increment_button_vm.dart`). |
+
+**Imports:** `features/<domain>` must not import `application`; `application` may import `features/<domain>` (use cases, entities) and `features/common` (shared types like `Failure`).
+
+We need:
+
+- View of button (reusable `ElementaryWidget` typed with `IButtonVm`)
+- Concrete WM in `pages/.../vm/` implementing `IButtonVm`
+- Increment model under `application/models/increment/`
+- Use case + repository under `features/increment/`
 
 ## View
 
+Colocated with **`IButtonVm`** under `application/widgets/increment_button/` (only the interface is shown here; the file `i_button_vm.dart` would sit beside the widget).
+
 ```dart
 
-class Button extends ElementaryWidget<IButtonWM> {
+class Button extends ElementaryWidget<IButtonVm> {
 
 	const Button(super.wmFactory, {super.key});
   
   @override
-  Widget build(IButtonWM wm) {
+  Widget build(IButtonVm wm) {
   	return EntityStateNotifierBuilder<bool>(
     	entityNotifier: wm.state,
       builder: (context, data) {
@@ -31,17 +43,19 @@ class Button extends ElementaryWidget<IButtonWM> {
 }
 ```
 
-## WM
+## IVm + concrete WM
+
+**`IButtonVm`** — abstract contract next to the reusable widget (`application/widgets/increment_button/i_button_vm.dart`). **`IncrementButtonVm`** — concrete `WidgetModel` under `application/pages/increment_button/vm/increment_button_vm.dart`.
 
 ```dart
-abstract interface class IButtonWM extends IWidgetModel {
+abstract interface class IButtonVm extends IWidgetModel {
 	ListenableState<EntityState<bool>> get state
 	IButtonProps get props;
   
   void onClick();
 }
 
-class ButtonWM extends WidgetModel<Button, IncrementModel> implements IButtonWM {
+class IncrementButtonVm extends WidgetModel<Button, IncrementModel> implements IButtonVm {
 
 	final _state = EntityStateNotifier<bool>();
 
@@ -53,7 +67,7 @@ class ButtonWM extends WidgetModel<Button, IncrementModel> implements IButtonWM 
   	title: Localization.of(context).increment + model.counter.toString(),
   );
   
-  ButtonWM(super.model);
+  IncrementButtonVm(super.model);
   
   @override
   void onClick() async {
@@ -92,6 +106,8 @@ class ButtonProps implements IButtonProps {
 
 ## Model
 
+`lib/application/models/increment/increment_model.dart` — calls `IncrementUseCase` from `lib/features/increment/domain/`.
+
 ```dart
 class IncrementModel extends ElementaryModel {
 	final IncrementUseCase _incrementUseCase;
@@ -112,6 +128,8 @@ class IncrementModel extends ElementaryModel {
 
 ## UseCase
 
+`lib/features/increment/domain/` (e.g. `increment_usecase.dart`).
+
 ```dart
 class IncrementUseCase extends NoArgsUseCase<Unit> with NetworkConnectionMixin {
 	final IIncrementRepository _repo;
@@ -130,6 +148,8 @@ class IncrementUseCase extends NoArgsUseCase<Unit> with NetworkConnectionMixin {
 ```
 
 ## Repository
+
+`IIncrementRepository` in `lib/features/increment/domain/`; `IncrementRepository` in `lib/features/increment/data/`.
 
 ```dart
 

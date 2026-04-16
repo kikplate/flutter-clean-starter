@@ -15,6 +15,9 @@ Overall, the Model plays a crucial role in the MVVM pattern by managing the appl
 
 ## In our application
 Model in our application is representation of model layer in `MVVM` architechture pattern.
+
+**Location:** When an `ElementaryModel` orchestrates use cases for UI (calling feature-layer use cases, combining results), place it under **`lib/application/models/<domain>/`** (e.g. `lib/application/models/users/users_list_model.dart`). **Do not** put that model under `lib/features/.../presentation/` — features hold **domain + data only**; the application layer owns MVVM models and views (see [folder structure](../folder-structure.md)).
+
 In many descriptions about model it says that model has responsibility of business logic. But in our application model has less responsibility to business logic. Business logic is responsibility of usecases. So `model` just call all needed usecases, combine them if needed and handle data. 
 >**Note**
 So as has been said model is just part of application where you can combine usecases and get needed result.
