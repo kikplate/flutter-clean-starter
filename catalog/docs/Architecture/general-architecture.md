@@ -3,7 +3,7 @@
 ## Overview
 Clean Architecture is a software design approach that emphasizes separating concerns and dependencies to build large-scale systems that are easy to maintain, scale, and test. The ultimate goal is to create systems where the business logic remains isolated from external frameworks and tools, allowing for greater flexibility and adaptability in response to changing requirements.
 
-![cleanarchitecture.jpg](/cleanarchitecture.jpg)
+![cleanarchitecture.jpg](https://blog.cleancoder.com/uncle-bob/images/2012-08-13-the-clean-architecture/CleanArchitecture.jpg)
 
 > Note: for reading more information about clean architecture visit this [link](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
