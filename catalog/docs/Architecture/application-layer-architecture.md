@@ -4,6 +4,25 @@ As architectural decision for creating application level we're using `MVVM` patt
 
 For the flutter project we're using [Elementary](https://pub.dev/packages/elementary) library as main contract for creating such architecture.
 
+## Mapping to `lib/application`
+
+All UI lives under **`lib/application/`** (see [folder structure](../folder-structure.md)): **`common/`**, **`widgets/`**, **`pages/`**, **`models/<domain>/`**. **Presentation is not placed under `lib/features/`**—each feature folder holds **domain + data only** (`lib/features/<domain>/domain`, `.../data`).
+
+### Folders at a glance
+
+| Path | Role |
+|------|------|
+| `application/common/` | Shared UI helpers (formatters, extensions, constants)—not domain rules. |
+| `application/widgets/` | **Reusable** `ElementaryWidget`s; each ships with a colocated **`IVm`** interface (naming: `I` + purpose + `Vm`, e.g. `IAppPrimaryButtonVm`). No concrete `WidgetModel` here. |
+| `application/pages/<page>/` | **Screen** root widget, page-only `widgets/`, and **`vm/`** for **concrete** WMs that implement the IVms used on that page + Elementary `WidgetModel`. |
+| `application/models/<domain>/` | `ElementaryModel` subclasses that call use cases from `lib/features/<domain>/`. |
+
+### IVm bridge for reusable widgets
+
+A reusable widget must depend only on an **abstract IVm** (props, callbacks, optional `Listenable` / state), not on a concrete page WM. **Concrete** `WidgetModel` classes **implement** that IVm and live under **`application/pages/<page_name>/vm/`** (e.g. `UsersListRefreshButtonVm implements IAppRefreshButtonVm`). The page root composes reusable widgets and wires the WM factory so each reusable child receives the WM that implements its IVm.
+
+Elementary’s own `IWidgetModel` still applies to **screen-level** WMs; IVm is an extra **narrow contract** for small reusable pieces so they stay decoupled from any single page.
+
 Here's an example of library's architecture with we should follow:
 ```plantuml
 
@@ -24,7 +43,10 @@ IWidgetModel --> ElementaryModel
 ```
 
 ## Our extended architecture
-As an example of simple button to show whole architecture:
+
+The diagram below illustrates a **reusable** button: **`AppButtonView`** depends on **`IAppButtonVm`** (under `application/widgets/`), not on a concrete WM. **`LoginPrimaryButtonVm`** (under `application/pages/login/vm/`) implements `IAppButtonVm` and extends `WidgetModel` with the page’s `ElementaryModel`. For **page-only** buttons you may skip IVm and use a WM directly in `pages/<page>/vm/`.
+
+As an example of a simple button to show the extended architecture:
 
 ```plantuml
 abstract class ElementaryView<T extends IWidgetModel> {}
@@ -39,10 +61,10 @@ IWidgetModel --> ElementaryModel
 
 class AppButtonView {}
 
-AppButtonView --|> ElementaryView : T = IAppButtonWM
+AppButtonView --|> ElementaryView : T = IAppButtonVm
 AppButtonView --> AppButtonModel
 
-class IAppButtonWM {
+class IAppButtonVm <<interface>> {
 	+ EntityState<Entity> get state
 	+ IAppButtonProps get props
   + IAppButtonTheme get theme
@@ -50,11 +72,22 @@ class IAppButtonWM {
   + void onClick()
 }
 
-IAppButtonWM --|> IWidgetModel: V = AppButton, M = AppButtonModel
-IAppButtonWM --> AppButtonView
-IAppButtonWM --> AppButtonBloc
-IAppButtonWM --> IAppButtonProps
-IAppButtonWM --> IAppButtonTheme
+note right of IAppButtonVm
+  Lives next to reusable
+  widget under application/widgets/
+end note
+
+AppButtonView ..> IAppButtonVm : build(wm)
+
+class LoginPrimaryButtonVm {}
+
+LoginPrimaryButtonVm ..|> IAppButtonVm
+LoginPrimaryButtonVm --|> IWidgetModel : V = AppButton, M = LoginModel
+
+LoginPrimaryButtonVm --> AppButtonView
+LoginPrimaryButtonVm --> AppButtonBloc
+LoginPrimaryButtonVm --> IAppButtonProps
+LoginPrimaryButtonVm --> IAppButtonTheme
 
 class AppButtonBloc {}
 abstract class Bloc<STATE, EVENT> {}
@@ -79,17 +112,18 @@ abstract class IAppButtonTheme {
 In our case we have few main components of application layer:
 
 - View
-- WM
-- Model
-- BLoC
+- WM (concrete `WidgetModel` under `application/pages/<page>/vm/`, often implementing a reusable **`IVm`**)
+- `IVm` (abstract interface colocated with reusable widgets under `application/widgets/`)
+- Model (`ElementaryModel` under `application/models/<domain>/`)
+- BLoC (optional; state/cache where it fits)
 
-**AppButtonView** is used for UI markup part only. Here we compose widgets to get brand new one reusable component.
+**AppButtonView** is used for UI markup only. For a **reusable** button, the view is typed with **`IAppButtonVm`**; the **concrete** WM (e.g. `LoginPrimaryButtonVm`) implements that IVm and wires props, theme, and `onClick`.
 
-**AppButtonWM** is used for providing data and theme settings to the view and responsible for handling state changes and be a bridge to the business logic.
+**Concrete WM** provides data and theme to the view, handles local state, and bridges to the `ElementaryModel` / optional BLoC.
 
-**Model** is a business logic layer of whole application layer.
+**Model** orchestrates use cases from `lib/features/<domain>/` (see [model](../Guidelines/model.md)).
 
-**BLoC** is used for storing states.
+**BLoC** is optional—use it as a state machine or cache when the feature benefits from it.
 
 
 ## View

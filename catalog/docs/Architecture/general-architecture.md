@@ -32,13 +32,13 @@ As we discussed we used customized version of clean architecture based on fronte
 
   :User;
 
-  partition Application {
+  partition "Application (lib/application)" {
     $applicationFlow("Page");
     $applicationFlow("View");
     $applicationFlow("VM");
     $applicationFlow("Model");
   }
-  partition Feature {
+  partition "Feature (lib/features)" {
     partition Domain {
       $domainFlow("Usecase");
       $domainFlow("Entity");
@@ -63,14 +63,17 @@ As we discussed we used customized version of clean architecture based on fronte
 ## Layers breaking down
 
 ### Application Layer
-This layer is responsible for handling framework and tools, also it'll connect directly to the user. <br/>
-This Layer is based on [MVVM (Model-ViewModel-View)](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93viewmodel) Architecture.<br/>
-This architecture Helps us separate the business logics (Model), UI logics (ViewModel) and UI (View). <br/>
+**Code** for this layer lives under **`lib/application/`** (Elementary views, reusable widgets + **`IVm`** interfaces, per-page `vm/`, and `ElementaryModel` under `application/models/<domain>/`). It is responsible for framework-facing UI and wiring; it **depends on** feature domain code (use cases) but **not** the other way around.
 
-> Note: Fore more details, class diagram, code examples and testing of this layer please visite the application layer document file.
+This layer is based on [MVVM (Model-ViewModel-View)](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93viewmodel) Architecture.<br/>
+This architecture helps us separate orchestration in the `ElementaryModel`, UI logic in `WidgetModel`s, and UI in views.
+
+> Note: For folder layout (`common`, `pages`, `widgets`, `models`), [folder structure](../folder-structure.md). For MVVM, IVm bridge, and diagrams, see [application layer](application-layer-architecture.md).
 
 ### Feature Layer
-This layer responsibles for just business logics.
+**Code** for domain rules and data access lives under **`lib/features/<domain>/`** — **`domain/`** (entities, use cases, `IRepository`) and **`data/`** (repository implementations, DTOs). **Do not** add `presentation/` under features; UI belongs in `lib/application/`.
+
+This layer is responsible for business rules and data mapping.
 
 #### Domain 
 This layer is a part of Feature layer which is the heart of our app and it just care about the main business logics of the app.<br/>

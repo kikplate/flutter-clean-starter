@@ -98,4 +98,3 @@ After tests pass, register `ExampleRepository` in DI as `IExampleRepository`.
 ## Related
 
 - [Data layer architecture](../Architecture/data-layer-architecture.md) — repositories, DTOs, and local models.
-- [Datasource guideline](./datasource-guideline.md) — **deprecated**; superseded by this document.

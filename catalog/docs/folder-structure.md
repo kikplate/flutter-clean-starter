@@ -1,122 +1,85 @@
 # Folder structure
 
-## Example of folder structure
-> Some parts of this article are deprecated and should be refactored
+This document describes how code is organized under `lib/`. Presentation **does not** live inside `features`; it lives under **`lib/application/`**, beside **`lib/features/`** (domain + data only).
+
+## Dependency rule
+
+- **`lib/features/`** must **not** import from **`lib/application/`** (domain and data stay independent of UI).
+- **`lib/application/`** may import **`lib/features/`** (use cases, entities, and **`features/common`** shared types).
+
+## `lib/features/common/` — shared types (non-UI)
+
+Cross-feature, non-UI building blocks used by domain and data layers: **`Failure`**, **`ApiTask`**, and similar. **Domain slices** (`features/users`, etc.) and **`application`** may import here; keep it free of Flutter UI imports.
 
 ```
-📦 root
-├─ lib
-│  ├─ features
-│  │  └─ 
-│  ├─ bootstrap
-│  │  ├─ di
-│  │  │  ├─ modules
-│  │  │  ├─ injection_container.dart
-│  │  │  └─ background_injection_container.dart
-│  │  ├─ endpoints
-│  │  ├─ env
-│  │  └─ hive
-│  └─ app
-│     ├─ router
-│     │  └─ root_router.dart
-│     ├─ user
-│     │  ├─ pages
-│     │  │  ├─ user_creation_page.dart
-│     │  │  └─ user_modification_page.dart
-│     │  ├─ models
-│     │  │  └─ user_model.dart
-│     │  ├─ wms
-│     │  │  └─ user_create_button_w_m.dart
-│     │  └─ blocs
-│     │     └─ user_store_bloc.dart
-│     ├─ place
-│     │  ├─ models
-│     │  ├─ wms
-│     │  └─ blocs
-│     └─ ...
-└─ packages
-   ├─ ui_kit
-   │  ├─ buttons
-   │  │  ├─ circular-button
-   │  │  └─ app-button
-   │  └─ ...
-   ├─ core
-   ├─ user_place
-   ├─ users
-   └─ ...
+📦 lib/features/common
+├─ failures
+└─ types
 ```
 
-## Basic rules of folder structure
+## `lib/features/<domain>/` — domain and data only
 
-We have two general foders for our code:
-- lib ― where all application files are located
-- packages ― for external dependencies that we can extract from project
-
-The reason why do we need to extract some code to another package is simple: increase speed of testing and keep less code in general folders.
-
-### Features
-Features folder is deprecated, now all features should be moved to separated packages.
-
-In any case folder structure of exact feature are pretty well defined. It has two cases:
-
-- When feature completly independend and non-general, like services
-- When feature consists of few features under one domain
-
-In the second case inside feature package we'll have separation to few small feature which are under first case structure rules
-
-#### Common feature folder structure
-
-Repositories **implement** domain `IRepository` contracts and contain HTTP/local I/O plus DTO parsing (there is no `datasources` folder).
+Each vertical slice (e.g. `users`) contains **no** `presentation/` folder. Only:
 
 ```
-📦 feature
-├─ data
-│  ├─ repositories
-│  ├─ dtos
-│  └─ endpoints
-└─ domain
-   ├─ entities
-   ├─ usecases
-   ├─ repositories
-   └─ failures
+📦 lib/features/users
+├─ data
+│  ├─ repositories
+│  ├─ dtos
+│  └─ endpoints   (optional)
+└─ domain
+   ├─ entities
+   ├─ usecases
+   ├─ repositories   (interfaces: I…Repository)
+   └─ failures
 ```
 
-### Bootstrap folder
-`Boostrap` is the folder where located some root files which connect whole application in one. Here is the place for dependency injection, envs, internal DB and other setup modules.
+Repositories implement domain contracts and own HTTP/local I/O plus DTO mapping (see [data layer architecture](Architecture/data-layer-architecture.md)).
 
-If you need to setup something you should go to the bootstrap folder. Now it contains:
+## `lib/application/` — all UI (Elementary)
+
+Everything the user sees is built here: pages, reusable widgets, Elementary **models** used by WMs, and small shared helpers.
+
 ```
-📦 feature
-├─ di
-├─ endpoints
-├─ envs
-├─ hive
-├─ router
-└─ notifications
+📦 lib/application
+├─ common              # Shared app-level helpers (formatters, extensions, UI constants—not domain rules)
+├─ widgets             # Reusable UI; each widget has a colocated IVm interface (bridge pattern)
+├─ pages               # One folder per screen / route
+│  └─ <page_name>      # e.g. users_list
+│     ├─ <page_name>_page.dart   # Root ElementaryWidget: composes reusable + page widgets
+│     ├─ widgets/                # Widgets used only on this page
+│     └─ vm/                     # Concrete WidgetModels for this page (implement IVm + IWidgetModel)
+└─ models                # ElementaryModel classes, grouped by domain
+   └─ <domain>           # e.g. users/
+      └─ …_model.dart
 ```
 
-> Current existing folders can be outdated. Check the code
+### `application/common/`
 
-### Presentation
-This package if created for `view` part of application. May be changed to `ui-kit`. Check updates.
-New structure of this package:
-```
-📦 
-└─ presentation
-   └─ lib
-      ├─ src
-      │  ├─ components
-      │  │  ├─ buttons
-      │  │  ├─ checkbox
-      │  │  └─ ...
-      │  └─ features
-      │     ├─ feature1
-      │     ├─ feature2
-      │     └─ ...
-      └─ presentation.dart
-```
-Try to follow this new structure and gradually refactoring.
+Cross-cutting **UI-related** utilities: spacing constants, generic extensions used by widgets, shared formatters for display strings. Do **not** put domain entities or use cases here.
 
+### `application/widgets/` — reusable components + **IVm**
+
+Each reusable widget (e.g. primary button) lives with an **interface** whose name follows **`I` + PascalCase + `Vm`** (e.g. `IAppPrimaryButtonVm`). That interface is the **only** contract the widget depends on: props, callbacks, optional listenable state. **No** concrete `WidgetModel` implementation lives here—only the **IVm** (bridge / strategy), so the same widget can be driven by different WMs on different pages.
+
+### `application/pages/<page_name>/`
+
+- **Root page widget**: thin composition layer; wires `wmFactory` and builds reusable `application/widgets` plus page-local `widgets/`.
+- **`widgets/`**: building blocks **specific to this screen** (not reused elsewhere).
+- **`vm/`**: **concrete** Elementary `WidgetModel` classes for this page. They **implement** the relevant **IVm** interfaces from `application/widgets` **and** extend `WidgetModel<…>` / implement `IWidgetModel` as required by Elementary. Name by **screen + role** (e.g. `UsersListPrimaryButtonVm` implements `IAppPrimaryButtonVm`).
+
+### `application/models/<domain>/`
+
+[`ElementaryModel`](Guidelines/model.md) subclasses that call use cases from `lib/features/<domain>/domain/`. One folder per domain keeps imports and ownership clear (e.g. `application/models/users/users_list_model.dart`).
+
+## `lib/bootstrap/`
+
+- **`bootstrap/`** — DI (`GetIt` / Injectable), env, app entry wiring.
+
+## Optional `packages/`
+
+You may extract reusable packages (e.g. UI kit) later; the same rules apply: **features** stay domain+data; **application** stays UI.
 
 ## Licenses
-> © All folder markdown trees are generated by [Project Tree Generator](https://woochanleee.github.io/project-tree-generator)
+
+> © Folder trees may be generated with [Project Tree Generator](https://woochanleee.github.io/project-tree-generator).
